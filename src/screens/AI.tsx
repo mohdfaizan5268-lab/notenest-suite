@@ -25,7 +25,7 @@ export default function AI({ go }: { go: (r: string) => void }) {
     else if (tool === 'ask') {
       if (!d.settings.geminiKey) { setOut('Add your free Gemini API key in Settings first.'); return; }
       setBusy(true);
-      try { setOut(await askGemini(d.settings.geminiKey, (text ? '' : '') + text)); } catch (e) { setOut('Error: ' + (e as Error).message); }
+      try { setOut(await askGemini(d.settings.geminiKey, text, d.settings.geminiModel || '')); } catch (e) { setOut('Error: ' + (e as Error).message); }
       setBusy(false);
     }
   };
@@ -39,7 +39,7 @@ export default function AI({ go }: { go: (r: string) => void }) {
         <label>{tool === 'break' ? 'Describe your goal or big task' : tool === 'search' ? 'What are you looking for in your notes?' : tool === 'ask' ? 'Your question' : 'Text'}</label>
         <textarea aria-label="Assistant input" value={text} onChange={e => setText(e.target.value)} style={{ minHeight: 120 }} /></>}
       <button className="btn pri" style={{ marginTop: 10 }} onClick={run} disabled={busy || (needsText && !text.trim())}><Sparkles size={15} /> {busy ? 'Thinking…' : 'Run'}</button>
-      {tool === 'ask' && <p className="muted small">Your question is sent to Google's Gemini using your own key. Nothing else from NoteNest is sent. Get a free key at aistudio.google.com.</p>}
+      {tool === 'ask' && <p className="muted small">Your question is sent to Google's Gemini using your own key. Nothing else from NoteNest is sent. Get a key at aistudio.google.com (add it in Settings).</p>}
       {out && <div className="card" style={{ background: 'var(--priS)', marginTop: 12, whiteSpace: 'pre-wrap' }} data-testid="ai-out">{out}</div>}
       {out && tool === 'write' && <button className="btn sm" style={{ marginTop: 8 }} onClick={() => navigator.clipboard?.writeText(out).then(() => toast('Copied'))}>Copy</button>}
       {steps.length > 0 && <div style={{ marginTop: 12 }}><ol>{steps.map((x, i) => <li key={i}>{x}</li>)}</ol>

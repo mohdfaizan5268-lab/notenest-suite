@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
-import { LayoutDashboard, FileText, PenTool, BookHeart, Repeat, CheckSquare, CalendarDays, Lock, Sparkles, Search, Bell, User, Settings as Cog, Menu, LogOut, Shield } from 'lucide-react';
+import { LayoutDashboard, Share2, FileText, PenTool, BookHeart, Repeat, CheckSquare, CalendarDays, Lock, Sparkles, Search, Bell, User, Settings as Cog, Menu, LogOut, Shield } from 'lucide-react';
 import { useStore } from './lib/store';
 import { ToastProvider } from './components/ui';
 import { eventsOn } from './lib/cal';
 import { today, uid } from './lib/util';
 import { showNotif } from './lib/notify';
+import Chatbot from './components/Chatbot';
 import Auth, { RecoveryScreen } from './screens/Auth';
 import Dashboard from './screens/Dashboard';
+import Library from './screens/Library';
 import Notes from './screens/Notes';
 import Draw from './screens/Draw';
 import Journal from './screens/Journal';
@@ -21,13 +23,13 @@ import Profile from './screens/Profile';
 import SettingsScreen from './screens/Settings';
 
 const NAV = [
-  ['dashboard', 'Dashboard', LayoutDashboard], ['notes', 'Notes', FileText], ['draw', 'Drawing', PenTool], ['journal', 'Journal', BookHeart],
+  ['library', 'Class Notes', Share2], ['dashboard', 'Dashboard', LayoutDashboard], ['notes', 'Notes', FileText], ['draw', 'Drawing', PenTool], ['journal', 'Journal', BookHeart],
   ['habits', 'Habits', Repeat], ['tasks', 'Tasks & Focus', CheckSquare], ['calendar', 'Calendar', CalendarDays], ['vault', 'Media Vault', Lock],
   ['ai', 'Smart Assistant', Sparkles], ['search', 'Search', Search], ['notifications', 'Notifications', Bell], ['profile', 'Profile', User], ['settings', 'Settings', Cog],
 ] as const;
 
 export function useRoute(): [string, (r: string) => void] {
-  const get = () => (location.hash.replace(/^#\/?/, '').split('?')[0] || 'dashboard');
+  const get = () => (location.hash.replace(/^#\/?/, '').split('?')[0] || 'library');
   const [r, setR] = useState(get());
   useEffect(() => { const f = () => setR(get()); window.addEventListener('hashchange', f); return () => window.removeEventListener('hashchange', f); }, []);
   return [r, (x: string) => { location.hash = '/' + x; }];
@@ -72,7 +74,7 @@ function Shell() {
     tick(); const i = window.setInterval(tick, 30000); return () => window.clearInterval(i);
   }, [s.data.events, s.data.habits, s.data.tasks, s.data.fired, s.data.settings.notifications]); // eslint-disable-line
 
-  const Screen = { dashboard: Dashboard, notes: Notes, draw: Draw, journal: Journal, habits: Habits, tasks: Tasks, calendar: Calendar, vault: Vault, ai: AI, search: SearchScreen, notifications: Notifications, profile: Profile, settings: SettingsScreen }[route] || Dashboard;
+  const Screen = { library: Library, dashboard: Dashboard, notes: Notes, draw: Draw, journal: Journal, habits: Habits, tasks: Tasks, calendar: Calendar, vault: Vault, ai: AI, search: SearchScreen, notifications: Notifications, profile: Profile, settings: SettingsScreen }[route] || Library;
   return <div className="app">
     <div className="top noprint"><button className="btn ico" aria-label="Menu" onClick={() => setOpen(!open)}><Menu size={18} /></button><b>NoteNest Suite</b></div>
     <nav className={'side noprint' + (open ? ' open' : '')} aria-label="Main">
@@ -84,12 +86,20 @@ function Shell() {
       <button className="nav" onClick={s.logout}><LogOut size={17} /> Log out</button>
     </nav>
     <main className="main" key={route}><Screen go={go} /></main>
+    <Chatbot go={go} />
     {s.locked && <LockScreen />}
   </div>;
 }
 
+function GuestShell({ onBack }: { onBack: () => void }) {
+  return <div style={{ maxWidth: 1000, margin: '0 auto', padding: '16px 14px 60px' }}>
+    <div className="row" style={{ marginBottom: 14 }}><div className="brand" style={{ padding: 0 }}><i>N</i> NoteNest Class Notes</div><span className="sp" /><button className="btn" onClick={onBack}>Log in / Sign up</button></div>
+    <Library guest />
+  </div>;
+}
+
 export default function App() {
-  const s = useStore();
+  const s = useStore(); const [guest, setGuest] = useState(false);
   if (s.status === 'loading') return <div className="auth muted">Loading…</div>;
-  return <ToastProvider>{s.status === 'out' ? <Auth /> : s.recovery ? <RecoveryScreen /> : <Shell />}</ToastProvider>;
+  return <ToastProvider>{s.status === 'out' ? (guest ? <GuestShell onBack={() => setGuest(false)} /> : <Auth onBrowse={() => setGuest(true)} />) : s.recovery ? <RecoveryScreen /> : <Shell />}</ToastProvider>;
 }

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Star, Archive, Trash2, FolderPlus, Plus, Lock, Unlock, History, Download, Printer, ArrowUp, ArrowDown, RotateCcw, Folder as FIcon, FileText, X, ChevronLeft } from 'lucide-react';
+import { Star, Archive, Trash2, FolderPlus, Plus, Lock, Unlock, History, Download, Printer, ArrowUp, ArrowDown, RotateCcw, Folder as FIcon, FileText, X, ChevronLeft, Share2 } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { Note, Block, Folder } from '../lib/types';
 import { uid, download, fmtTs, stripMd } from '../lib/util';
 import { renderMd } from '../lib/markdown';
 import { lockText, unlockText } from '../lib/crypto';
 import { Header, Modal, PromptModal, Confirm, Empty, useToast } from '../components/ui';
+import { ShareModal } from './Library';
 
 type View = 'all' | 'fav' | 'archive' | 'trash';
 const blocksText = (b: Block[]) => b.map(x => (x.type === 'todo' ? (x.done ? '[x] ' : '[ ] ') : '') + x.text).join('\n');
@@ -106,7 +107,7 @@ function Editor({ note, onBack }: { note: Note; onBack: () => void }) {
   const [pw, setPw] = useState<string | null>(null); // password held in memory while a locked note is open
   const [plain, setPlain] = useState<{ body: string; blocks: Block[]; mode: Note['mode'] } | null>(null);
   const [ask, setAsk] = useState(note.lock ? 'open' : '');
-  const [dlg, setDlg] = useState<'' | 'lock' | 'unlockperm' | 'hist'>('');
+  const [dlg, setDlg] = useState<'' | 'lock' | 'unlockperm' | 'hist' | 'share'>('');
   const [preview, setPreview] = useState(true); const [tagIn, setTagIn] = useState('');
   const saveT = useRef<number>();
 
@@ -141,6 +142,7 @@ function Editor({ note, onBack }: { note: Note; onBack: () => void }) {
       <button className="btn sm" onClick={onBack}><ChevronLeft size={14} /> Notes</button><span className="sp" />
       <button className={'btn sm' + (note.fav ? ' on' : '')} aria-label="Favorite" onClick={() => patch(n => { n.fav = !n.fav; })}><Star size={14} /></button>
       <button className="btn sm" onClick={() => locked ? setDlg('unlockperm') : setDlg('lock')}>{locked ? <><Unlock size={14} /> Remove lock</> : <><Lock size={14} /> Lock</>}</button>
+      {!locked && <button className="btn sm" onClick={() => setDlg('share')}><Share2 size={14} /> Upload to class notes</button>}
       {!locked && <button className="btn sm" onClick={() => setDlg('hist')}><History size={14} /> History ({note.versions.length})</button>}
       {ready && <><button className="btn sm" onClick={exportMd}><Download size={14} /> .md</button><button className="btn sm" onClick={printIt}><Printer size={14} /> PDF</button></>}
       <button className="btn sm" onClick={() => { patch(n => { n.archived = !n.archived; }); onBack(); }}><Archive size={14} /> {note.archived ? 'Unarchive' : 'Archive'}</button>
@@ -183,6 +185,7 @@ function Editor({ note, onBack }: { note: Note; onBack: () => void }) {
       onSubmit={async v => { if (v.length < 4) return 'Use at least 4 characters.'; const p = { body: note.body, blocks: note.blocks, mode: note.mode }; const l = await lockText(v, JSON.stringify(p)); patch(n => { n.lock = { salt: l.salt, iv: l.iv, data: l.ct }; n.body = ''; n.blocks = []; n.versions = []; }); setPlain(p); setPw(v); setDlg(''); toast('Note locked'); }} />}
     {dlg === 'unlockperm' && <PromptModal title="Remove lock" label="Note password" confirmText="Remove lock" onClose={() => setDlg('')}
       onSubmit={async v => { try { const t = JSON.parse(await unlockText(v, { salt: note.lock!.salt, iv: note.lock!.iv, ct: note.lock!.data })); patch(n => { n.lock = undefined; n.body = t.body; n.blocks = t.blocks; n.mode = t.mode; }); setPlain(null); setPw(null); setDlg(''); toast('Lock removed'); } catch { return 'Wrong password.'; } }} />}
+    {dlg === 'share' && <ShareModal initial={{ title: note.title, body: md, tags: note.tags }} onClose={() => setDlg('')} onDone={() => { setDlg(''); toast('Uploaded to class notes! 🎉'); location.hash = '/library'; }} />}
     {dlg === 'hist' && <Modal title="Version history" onClose={() => setDlg('')}>
       <button className="btn sm" onClick={() => { patch(n => { const c = noteText(n); if (c) { n.versions.unshift({ at: Date.now(), title: n.title, body: c }); n.versions = n.versions.slice(0, 25); } }); toast('Version saved'); }}>Save a version now</button>
       {note.versions.length === 0 && <p className="muted">No versions yet. They are saved automatically as you edit.</p>}

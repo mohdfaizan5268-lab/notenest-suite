@@ -18,7 +18,7 @@ export interface Pomo { id: Id; start: number; mins: number; kind: 'work' | 'bre
 export interface Ev { id: Id; title: string; date: string; time: string; endTime: string; recur: 'none' | 'daily' | 'weekly' | 'monthly'; remind: number; notes: string }
 export interface VaultItem { id: Id; name: string; mime: string; size: number; hidden: boolean; added: number }
 export interface Notif { id: Id; at: number; text: string; read: boolean }
-export interface Settings { theme: 'light' | 'dark'; font: 'sans' | 'serif' | 'mono'; fontSize: number; autoLogout: number; notifications: boolean; geminiKey: string; city: string }
+export interface Settings { theme: 'light' | 'dark'; font: 'sans' | 'serif' | 'mono'; fontSize: number; autoLogout: number; notifications: boolean; geminiKey: string; geminiModel?: string; city: string }
 export interface Data {
   notes: Note[]; folders: Folder[]; drawings: Drawing[]; journals: Journal[]; habits: Habit[];
   tasks: Task[]; goals: Goal[]; pomos: Pomo[]; events: Ev[]; vault: VaultItem[]; notifs: Notif[];

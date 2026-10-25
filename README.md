@@ -1,6 +1,6 @@
 # NoteNest Suite
 
-A free, privacy-first productivity workspace: notes, drawing, journal, habits, tasks + Pomodoro, calendar, encrypted media vault and a smart assistant. **No server, no database, no paid services** — everything is stored encrypted inside your own browser.
+A free workspace built so students can **share class notes with each other**, plus private notes, drawing, journal, habits, tasks + Pomodoro, calendar, encrypted media vault and a smart assistant. Your *private* notes, journal, habits and files are stored encrypted inside your own browser. The **Class Notes** is the shared part: notes you choose to share are public to the whole class.
 
 ## Run it on your computer
 ```
@@ -27,7 +27,19 @@ npm run build      # production build into dist/
 4. Click **Create Static Site**. When it finishes, your link is shown at the top.
    (`render.yaml` is included, so **New + → Blueprint** also works.)
 
-## How your data is protected
+## Turn on class sharing (one-time, ~10 minutes)
+The Class Notes uses the same free online database as the class notes app.
+1. **Create the table and file storage.** Open `supabase-setup.sql` in this project and copy everything. In your Bolt project (or the Supabase SQL editor) paste it and run it. In Bolt you can say: *"Run this SQL as a migration"* and paste it. It is safe to run twice.
+2. **Add two settings on Render.** Render → your `notenest-suite` site → **Environment** → add:
+   - `VITE_SUPABASE_URL` = same value as your class notes site
+   - `VITE_SUPABASE_ANON_KEY` = same value as your class notes site
+   (Open the class notes service's Environment tab and copy the two values.) Save — Render rebuilds.
+3. Open the site → **Class Notes** → **Upload notes**. Create the library account the first time.
+
+How it works: anyone can **browse and read** without any account (the login page has a "Browse the class notes library" button). Students need a free account only to **upload**. You can only delete your own uploads. Shared text is sanitized, and attachments are limited to PDF / images / Office / text files up to 10 MB.
+**Everything in the library is public** to anyone who has the site link — remind classmates not to share private information. (To restrict reading to signed-in students only, change the `select` policy `to anon, authenticated` into `to authenticated` in the SQL.)
+
+## How your private data is protected
 - Your password never leaves the browser. It unlocks a random 256-bit master key (PBKDF2 → AES-256-GCM). All data and files are encrypted with that key before being saved in IndexedDB.
 - At sign-up you get a **recovery key**. It's the only way back if you forget your password. Save it.
 - Notes can have their own extra password. The Media Vault has its own separate password.
@@ -37,6 +49,7 @@ npm run build      # production build into dist/
 ## What's included
 | Area | Included |
 |---|---|
+| Class Notes | Public uploaded notes with the uploader's name, title, automatic upload time, text and file attachments; search; save a copy to your own notes; delete your own uploads; browse without login |
 | Accounts | Email + password, recovery key reset, PIN lock, idle auto-logout, change password, delete account, encrypted backup/restore |
 | Dashboard | Greeting, productivity score, habits, tasks due, today's events, recent notes/journal, focus stats, quick create |
 | Notes | Markdown with live preview, block editor, nested folders, tags, favorites, archive, recycle bin, per-note password lock, templates, version history, full-text search, export .md / print-to-PDF |
@@ -57,3 +70,5 @@ npm run build      # production build into dist/
 - **Reminders and pop-ups only fire while the app is open in a browser tab.**
 - **The "AI" tools are simple offline algorithms**, not a large language model, unless you add your own Gemini key (that option is untested against the live Google service).
 - Browser storage is limited by your browser/disk.
+- The Class Notes has no moderation tools; the admin can delete rows in the database dashboard.
+- If the database project is paused or removed, the library stops working (private notes still work).

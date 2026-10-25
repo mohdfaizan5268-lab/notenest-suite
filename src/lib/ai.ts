@@ -76,12 +76,27 @@ export function knowledgeSearch(d: Data, q: string): { id: string; title: string
     return { id: n.id, title: n.title || 'Untitled', snippet: stripMd(n.body || n.blocks.map(b => b.text).join(' ')).slice(Math.max(0, i - 30), i + 120), sc };
   }).filter(x => x.sc > 0).sort((a, b) => b.sc - a.sc).slice(0, 8);
 }
-export async function askGemini(key: string, prompt: string): Promise<string> {
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(key)}`, {
+const BASE = 'https://generativelanguage.googleapis.com/v1beta/';
+// Google retires models often, so we ask the API which models this key can use and pick the newest stable "flash".
+export async function pickGeminiModel(key: string): Promise<string> {
+  const r = await fetch(BASE + 'models?pageSize=200&key=' + encodeURIComponent(key));
+  const j = await r.json();
+  if (!r.ok) throw new Error(j?.error?.message || 'Could not list Gemini models. Check your key.');
+  const names: string[] = (j.models || []).filter((m: { supportedGenerationMethods?: string[] }) => m.supportedGenerationMethods?.includes('generateContent'))
+    .map((m: { name: string }) => m.name.replace(/^models\//, ''))
+    .filter((n: string) => /^gemini-[\d.]+-flash$/.test(n));
+  const ver = (n: string) => parseFloat(n.split('-')[1]);
+  names.sort((a, b) => ver(b) - ver(a));
+  if (!names.length) throw new Error('No Gemini flash model is available for this key. Type a model name in Settings.');
+  return names[0];
+}
+export async function askGemini(key: string, prompt: string, model = '', showModel = true): Promise<string> {
+  const m = model.trim() || (await pickGeminiModel(key));
+  const r = await fetch(`${BASE}models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(key)}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
   });
   const j = await r.json();
   if (!r.ok) throw new Error(j?.error?.message || 'Gemini request failed');
-  return j?.candidates?.[0]?.content?.parts?.map((p: { text: string }) => p.text).join('') || 'No answer returned.';
+  return (j?.candidates?.[0]?.content?.parts?.map((p: { text: string }) => p.text).join('') || 'No answer returned.') + (showModel ? `\n\n(model: ${m})` : '');
 }

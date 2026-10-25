@@ -3,7 +3,7 @@ import { Copy, Download, ShieldCheck } from 'lucide-react';
 import { download } from '../lib/util';
 import { useStore } from '../lib/store';
 
-export default function Auth() {
+export default function Auth({ onBrowse }: { onBrowse?: () => void }) {
   const s = useStore();
   const [mode, setMode] = useState<'login' | 'signup' | 'reset' | 'restore'>('login');
   const [name, setName] = useState(''); const [email, setEmail] = useState(''); const [pw, setPw] = useState('');
@@ -35,6 +35,7 @@ export default function Auth() {
       else if (mode === 'signup') { await s.signup(name, email, pw); }
       else await s.reset(email, rec, pw);
     })}>{busy ? 'Working…' : mode === 'login' ? 'Log in' : mode === 'signup' ? 'Create account' : 'Reset password & log in'}</button>}
+    {onBrowse && <button className="btn" style={{ width: '100%', marginTop: 10, justifyContent: 'center' }} onClick={onBrowse}>📚 Browse class notes (no login)</button>}
     <p className="muted small" style={{ marginTop: 14 }}>No email verification is used because there is no server — your account exists only in this browser.</p>
   </div></div>;
 }
