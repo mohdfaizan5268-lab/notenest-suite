@@ -97,7 +97,7 @@ async function gerr(r: Response): Promise<{ msg: string; fatal: boolean }> {
 }
 // Google retires models often, so ask the API which models this key can use; newest stable "flash" models first.
 export async function listGeminiModels(key: string): Promise<string[]> {
-  const r = await gfetch(BASE + 'models?pageSize=200&key=' + encodeURIComponent(key));
+  const r = await gfetch(BASE + 'models?pageSize=200', { headers: { 'x-goog-api-key': key } });
   if (!r.ok) throw new Error((await gerr(r)).msg);
   const j = await r.json();
   const names: string[] = (j.models || []).filter((m: { supportedGenerationMethods?: string[] }) => m.supportedGenerationMethods?.includes('generateContent'))
@@ -111,8 +111,8 @@ export async function askGemini(key: string, prompt: string, model = '', showMod
   const candidates = model.trim() ? [model.trim()] : (await listGeminiModels(key)).slice(0, 4);
   let last = 'Gemini request failed';
   for (const m of candidates) {
-    const r = await gfetch(`${BASE}models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(key)}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+    const r = await gfetch(`${BASE}models/${encodeURIComponent(m)}:generateContent`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
     if (r.ok) { const j = await r.json(); const t = j?.candidates?.[0]?.content?.parts?.map((p: { text: string }) => p.text).join('') || 'No answer returned.'; return t + (showModel ? `\n\n(model: ${m})` : ''); }
     const e = await gerr(r); last = e.msg; if (e.fatal) break;
   }
