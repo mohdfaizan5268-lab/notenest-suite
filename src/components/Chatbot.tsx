@@ -40,7 +40,7 @@ export default function Chatbot({ go }: { go: (r: string) => void }) {
         <div className="row"><input type="password" value={keyIn} onChange={e => setKeyIn(e.target.value)} placeholder="Gemini API key" aria-label="Gemini API key" style={{ flex: 1, width: 'auto' }} />
           <button className="btn sm pri" disabled={!keyIn.trim()} onClick={() => { s.update(d => { d.settings.geminiKey = keyIn.trim(); }); setKeyIn(''); setShowKey(false); }}>Save</button>
           {s.data.settings.geminiKey && <button className="btn sm bad" onClick={() => s.update(d => { d.settings.geminiKey = ''; })}>Remove</button>}
-          {key && <button className="btn sm" onClick={async () => { setTest('Testing…'); try { await askGemini(key, 'Reply with the single word: OK', s.data.settings.geminiModel || '', false); setTest('✅ Your key works!'); } catch (e) { setTest('❌ ' + (e as Error).message); } }}>Test key</button>}</div>
+          {key && <button className="btn sm" onClick={async () => { setTest('Testing…'); try { const a = await askGemini(key, 'Reply with the single word: OK', s.data.settings.geminiModel || '', true); setTest('✅ Your key works! ' + (a.match(/\(model: (.*)\)/)?.[0] || '')); } catch (e) { setTest('❌ ' + (e as Error).message); } }}>Test key</button>}</div>
         {test && <div className="small" style={{ marginTop: 6 }} role="status">{test}</div>}</div>}
       <div className="chat-body">
         {msgs.map((m, i) => <div key={i} className={'chat-msg ' + m.who}>

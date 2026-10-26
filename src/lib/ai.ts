@@ -80,10 +80,10 @@ export function knowledgeSearch(d: Data, q: string): { id: string; title: string
 export const sharedGeminiKey = ((import.meta.env.VITE_GEMINI_API_KEY as string | undefined) || '').trim();
 const BASE = 'https://generativelanguage.googleapis.com/v1beta/';
 
-async function gfetch(url: string, init?: RequestInit, ms = 25000): Promise<Response> {
+async function gfetch(url: string, init?: RequestInit, ms = 15000): Promise<Response> {
   const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
   try { return await fetch(url, { ...init, signal: ctl.signal }); }
-  catch (e) { throw new Error((e as Error).name === 'AbortError' ? 'Gemini took too long to answer (over 25 seconds). Try again.' : 'Could not reach Google. Check your internet connection, or a browser extension/ad-blocker may be blocking it.'); }
+  catch (e) { throw new Error((e as Error).name === 'AbortError' ? 'Gemini took too long to answer. Try again in a moment.' : 'Could not reach Google. Check your internet connection, or a browser extension/ad-blocker may be blocking it.'); }
   finally { clearTimeout(t); }
 }
 async function gerr(r: Response): Promise<{ msg: string; fatal: boolean }> {
@@ -103,16 +103,22 @@ export async function listGeminiModels(key: string): Promise<string[]> {
   const names: string[] = (j.models || []).filter((m: { supportedGenerationMethods?: string[] }) => m.supportedGenerationMethods?.includes('generateContent'))
     .map((m: { name: string }) => m.name.replace(/^models\//, '')).filter((n: string) => /^gemini-[\d.]+-flash(-lite)?$/.test(n));
   const ver = (n: string) => parseFloat(n.split('-')[1]) - (n.endsWith('-lite') ? 0.01 : 0);
-  names.sort((a, b) => ver(b) - ver(a));
+  // the long-established stable model first (fast, works for free keys), then newest-first
+  const PREFERRED = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+  names.sort((a, b) => (PREFERRED.indexOf(a) + 1 ? 1000 - PREFERRED.indexOf(a) : ver(a)) - (PREFERRED.indexOf(b) + 1 ? 1000 - PREFERRED.indexOf(b) : ver(b)));
+  names.reverse();
   if (!names.length) throw new Error('This key can not use any Gemini "flash" model. Type a model name in Settings.');
   return names;
 }
 export async function askGemini(key: string, prompt: string, model = '', showModel = true): Promise<string> {
-  const candidates = model.trim() ? [model.trim()] : (await listGeminiModels(key)).slice(0, 4);
+  const candidates = model.trim() ? [model.trim()] : (await listGeminiModels(key)).slice(0, 3);
   let last = 'Gemini request failed';
   for (const m of candidates) {
-    const r = await gfetch(`${BASE}models/${encodeURIComponent(m)}:generateContent`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+    let r: Response;
+    try {
+      r = await gfetch(`${BASE}models/${encodeURIComponent(m)}:generateContent`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+    } catch (e) { last = (e as Error).message; continue; } // timeout / network: try the next model
     if (r.ok) { const j = await r.json(); const t = j?.candidates?.[0]?.content?.parts?.map((p: { text: string }) => p.text).join('') || 'No answer returned.'; return t + (showModel ? `\n\n(model: ${m})` : ''); }
     const e = await gerr(r); last = e.msg; if (e.fatal) break;
   }
