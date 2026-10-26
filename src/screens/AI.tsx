@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { useStore } from '../lib/store';
-import { summarize, breakDown, improveWriting, habitInsights, journalReflection, suggestions, knowledgeSearch, askGemini } from '../lib/ai';
+import { sharedGeminiKey, summarize, breakDown, improveWriting, habitInsights, journalReflection, suggestions, knowledgeSearch, askGemini } from '../lib/ai';
 import { uid, today } from '../lib/util';
 import { Header, useToast } from '../components/ui';
 
@@ -23,9 +23,10 @@ export default function AI({ go }: { go: (r: string) => void }) {
     else if (tool === 'sugg') setOut(suggestions(d));
     else if (tool === 'search') setHits(knowledgeSearch(d, text));
     else if (tool === 'ask') {
-      if (!d.settings.geminiKey) { setOut('Add your free Gemini API key in Settings first.'); return; }
+      const gkey = d.settings.geminiKey || sharedGeminiKey;
+      if (!gkey) { setOut('Add your free Gemini API key in Settings first.'); return; }
       setBusy(true);
-      try { setOut(await askGemini(d.settings.geminiKey, text, d.settings.geminiModel || '')); } catch (e) { setOut('Error: ' + (e as Error).message); }
+      try { setOut(await askGemini(gkey, text, d.settings.geminiModel || '')); } catch (e) { setOut('Error: ' + (e as Error).message); }
       setBusy(false);
     }
   };

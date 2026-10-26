@@ -39,6 +39,11 @@ The Class Notes uses the same free online database as the class notes app.
 How it works: anyone can **browse and read** without any account (the login page has a "Browse the class notes library" button). Students need a free account only to **upload**. You can only delete your own uploads. Shared text is sanitized, and attachments are limited to PDF / images / Office / text files up to 10 MB.
 **Everything in the library is public** to anyone who has the site link — remind classmates not to share private information. (To restrict reading to signed-in students only, change the `select` policy `to anon, authenticated` into `to authenticated` in the SQL.)
 
+## Gemini for the chat helper (optional)
+- **Per student:** open the chat bubble → **🔑 Add Gemini key** → paste a key from aistudio.google.com → Save. It is stored encrypted in that browser only.
+- **One key for everyone:** add `VITE_GEMINI_API_KEY` on Render (Environment). Students then get Gemini answers without doing anything. Because the key ships inside the website, anyone can find it, so in Google AI Studio / Google Cloud restrict that key to your site address and set a quota.
+Without any key the helper still answers using built-in help.
+
 ## How your private data is protected
 - Your password never leaves the browser. It unlocks a random 256-bit master key (PBKDF2 → AES-256-GCM). All data and files are encrypted with that key before being saved in IndexedDB.
 - At sign-up you get a **recovery key**. It's the only way back if you forget your password. Save it.

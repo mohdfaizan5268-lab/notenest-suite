@@ -1,7 +1,7 @@
 export interface Faq { id: string; kw: string[]; a: string; route?: string; label?: string }
 
 export const FAQS: Faq[] = [
-  { id: 'start', kw: ['start', 'begin', 'getting', 'first', 'new', 'how', 'use', 'site', 'app', 'guide', 'tour', 'what'], a: 'NoteNest is your private study & life workspace. Use the left menu: Notes for writing, Drawing for sketches, Journal for daily entries, Habits for streaks, Tasks & Focus for to-dos and the Pomodoro timer, Calendar for events, Media Vault for private files, and Smart Assistant for summaries. Everything is encrypted and stays in this browser.', route: 'dashboard', label: 'Open Dashboard' },
+  { id: 'start', kw: ['start', 'begin', 'getting', 'first', 'new', 'how', 'use', 'site', 'app', 'guide', 'tour', 'what'], a: 'NoteNest lets classmates share notes with each other, and also gives you a private study workspace. Class Notes (top of the menu) is where everyone uploads and reads shared notes. The rest of the menu is private to you: Notes for your own writing, Drawing for sketches, Journal for daily entries, Habits for streaks, Tasks & Focus for to-dos and the Pomodoro timer, Calendar for events, Media Vault for private files, and Smart Assistant for summaries. Everything is encrypted and stays in this browser.', route: 'dashboard', label: 'Open Dashboard' },
   { id: 'note', kw: ['note', 'notes', 'write', 'create', 'markdown', 'edit'], a: 'Go to Notes → New note. Type a title and your text. Use Markdown (# Heading, **bold**, - [ ] checklist) or switch to "Blocks" for a block editor. It saves automatically. Use "From template" for ready-made study or meeting notes.', route: 'notes', label: 'Open Notes' },
   { id: 'lock', kw: ['lock', 'locked', 'password', 'protect', 'private', 'secret', 'hide'], a: 'Open a note and click "Lock", then choose a password just for that note. It is separate from your login password. If you forget a note password, that note cannot be recovered. Click "Remove lock" later to unlock it for good.', route: 'notes', label: 'Open Notes' },
   { id: 'folder', kw: ['folder', 'folders', 'organize', 'organise', 'tag', 'tags', 'favorite', 'favourite', 'archive'], a: 'In Notes, use the small folder button on the left to create folders (you can add sub-folders too). Inside a note you can pick its folder and add #tags, star it as a favorite, or archive it.', route: 'notes', label: 'Open Notes' },
@@ -36,6 +36,7 @@ const STOP = new Set('i a an the to do is are can my me of in on it how what whe
 const tok = (s: string) => (s.toLowerCase().match(/[a-z0-9'-]+/g) || []);
 
 const RULES: [RegExp, string][] = [
+  [/how.{0,12}work|what is (this|it|noten)|what can (i|you)|explain|about (this|the) (site|app)|^help\W*$|what do(es)? this/i, 'start'],
   [/share|sharing|classmate|class library|upload|everyone|friends/i, 'share'],
   [/forgot|forget|reset|recovery key|can'?t (log|sign)|cannot (log|sign)/i, 'forgot'],
   [/vault/i, 'vault'], [/\bpin\b|fingerprint|biometric|face (id|unlock)/i, 'pin'],

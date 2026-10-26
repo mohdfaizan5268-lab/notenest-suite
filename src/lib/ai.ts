@@ -76,6 +76,8 @@ export function knowledgeSearch(d: Data, q: string): { id: string; title: string
     return { id: n.id, title: n.title || 'Untitled', snippet: stripMd(n.body || n.blocks.map(b => b.text).join(' ')).slice(Math.max(0, i - 30), i + 120), sc };
   }).filter(x => x.sc > 0).sort((a, b) => b.sc - a.sc).slice(0, 8);
 }
+// Optional key shared by the whole site (set VITE_GEMINI_API_KEY on Render). NOTE: anything in a website's code is visible to visitors.
+export const sharedGeminiKey = ((import.meta.env.VITE_GEMINI_API_KEY as string | undefined) || '').trim();
 const BASE = 'https://generativelanguage.googleapis.com/v1beta/';
 // Google retires models often, so we ask the API which models this key can use and pick the newest stable "flash".
 export async function pickGeminiModel(key: string): Promise<string> {

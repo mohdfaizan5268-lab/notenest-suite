@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { MessageCircle, X, Send, Sparkles } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { localAnswer, SUGGESTED, GUIDE_FOR_AI } from '../lib/guide';
-import { askGemini } from '../lib/ai';
+import { askGemini, sharedGeminiKey } from '../lib/ai';
 
 interface Msg { who: 'bot' | 'me'; text: string; route?: string; label?: string }
 
 export default function Chatbot({ go }: { go: (r: string) => void }) {
-  const s = useStore(); const key = s.data.settings.geminiKey;
+  const s = useStore(); const key = s.data.settings.geminiKey || sharedGeminiKey; const [keyIn, setKeyIn] = useState(''); const [showKey, setShowKey] = useState(false);
   const [open, setOpen] = useState(false); const [q, setQ] = useState(''); const [busy, setBusy] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([{ who: 'bot', text: `Hi ${s.user?.name || 'there'}! 👋 I'm your NoteNest guide. Ask me how to use anything on this site.` }]);
   const end = useRef<HTMLDivElement>(null);
@@ -33,8 +33,13 @@ export default function Chatbot({ go }: { go: (r: string) => void }) {
   return <div className="noprint">
     {!open && <button className="chat-bubble" aria-label="Open help chat" onClick={() => setOpen(true)}><MessageCircle size={24} /></button>}
     {open && <div className="chat-panel" role="dialog" aria-label="NoteNest guide chat">
-      <div className="chat-head"><Sparkles size={16} /><b className="sp">NoteNest Guide</b><span className="small">{key ? 'Gemini on' : 'Built-in help'}</span>
+      <div className="chat-head"><Sparkles size={16} /><b className="sp">NoteNest Guide</b><button className="btn sm" style={{ color: 'inherit' }} onClick={() => setShowKey(!showKey)} aria-label="Gemini key settings">{key ? '✨ Gemini on' : '🔑 Add Gemini key'}</button>
         <button className="btn ico sm" aria-label="Close chat" onClick={() => setOpen(false)}><X size={15} /></button></div>
+      {showKey && <div style={{ padding: 10, borderBottom: '1px solid var(--line)', background: 'var(--priS)' }}>
+        <div className="small" style={{ marginBottom: 6 }}>{s.data.settings.geminiKey ? 'Your Gemini key is saved (encrypted in this browser).' : sharedGeminiKey ? 'The site provides a Gemini key. You can use your own instead.' : 'Paste a free key from aistudio.google.com for smarter answers.'}</div>
+        <div className="row"><input type="password" value={keyIn} onChange={e => setKeyIn(e.target.value)} placeholder="Gemini API key" aria-label="Gemini API key" style={{ flex: 1, width: 'auto' }} />
+          <button className="btn sm pri" disabled={!keyIn.trim()} onClick={() => { s.update(d => { d.settings.geminiKey = keyIn.trim(); }); setKeyIn(''); setShowKey(false); }}>Save</button>
+          {s.data.settings.geminiKey && <button className="btn sm bad" onClick={() => s.update(d => { d.settings.geminiKey = ''; })}>Remove</button>}</div></div>}
       <div className="chat-body">
         {msgs.map((m, i) => <div key={i} className={'chat-msg ' + m.who}>
           <div>{m.text}</div>
