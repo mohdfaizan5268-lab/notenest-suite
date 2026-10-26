@@ -79,26 +79,42 @@ export function knowledgeSearch(d: Data, q: string): { id: string; title: string
 // Optional key shared by the whole site (set VITE_GEMINI_API_KEY on Render). NOTE: anything in a website's code is visible to visitors.
 export const sharedGeminiKey = ((import.meta.env.VITE_GEMINI_API_KEY as string | undefined) || '').trim();
 const BASE = 'https://generativelanguage.googleapis.com/v1beta/';
-// Google retires models often, so we ask the API which models this key can use and pick the newest stable "flash".
-export async function pickGeminiModel(key: string): Promise<string> {
-  const r = await fetch(BASE + 'models?pageSize=200&key=' + encodeURIComponent(key));
+
+async function gfetch(url: string, init?: RequestInit, ms = 25000): Promise<Response> {
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
+  try { return await fetch(url, { ...init, signal: ctl.signal }); }
+  catch (e) { throw new Error((e as Error).name === 'AbortError' ? 'Gemini took too long to answer (over 25 seconds). Try again.' : 'Could not reach Google. Check your internet connection, or a browser extension/ad-blocker may be blocking it.'); }
+  finally { clearTimeout(t); }
+}
+async function gerr(r: Response): Promise<{ msg: string; fatal: boolean }> {
+  let raw = ''; try { const j = await r.json(); raw = j?.error?.message || ''; } catch { /* no body */ }
+  const m = raw.toLowerCase();
+  if (r.status === 400 && (m.includes('api key') || m.includes('api_key'))) return { msg: 'Google says this API key is not valid. Copy it again from aistudio.google.com (no spaces).', fatal: true };
+  if (r.status === 403) return { msg: 'Google refused this key (' + (raw || 'forbidden') + '). The key may be restricted, disabled, or the Gemini API is not enabled for it.', fatal: true };
+  if (r.status === 429) return { msg: 'Google says the free quota is used up for now (' + (raw.slice(0, 120) || 'rate limit') + '). Wait a minute and try again.', fatal: false };
+  if (r.status === 404 || m.includes('not found') || m.includes('not supported')) return { msg: 'That Gemini model is not available for your key.', fatal: false };
+  return { msg: raw || `Gemini error (${r.status})`, fatal: false };
+}
+// Google retires models often, so ask the API which models this key can use; newest stable "flash" models first.
+export async function listGeminiModels(key: string): Promise<string[]> {
+  const r = await gfetch(BASE + 'models?pageSize=200&key=' + encodeURIComponent(key));
+  if (!r.ok) throw new Error((await gerr(r)).msg);
   const j = await r.json();
-  if (!r.ok) throw new Error(j?.error?.message || 'Could not list Gemini models. Check your key.');
   const names: string[] = (j.models || []).filter((m: { supportedGenerationMethods?: string[] }) => m.supportedGenerationMethods?.includes('generateContent'))
-    .map((m: { name: string }) => m.name.replace(/^models\//, ''))
-    .filter((n: string) => /^gemini-[\d.]+-flash$/.test(n));
-  const ver = (n: string) => parseFloat(n.split('-')[1]);
+    .map((m: { name: string }) => m.name.replace(/^models\//, '')).filter((n: string) => /^gemini-[\d.]+-flash(-lite)?$/.test(n));
+  const ver = (n: string) => parseFloat(n.split('-')[1]) - (n.endsWith('-lite') ? 0.01 : 0);
   names.sort((a, b) => ver(b) - ver(a));
-  if (!names.length) throw new Error('No Gemini flash model is available for this key. Type a model name in Settings.');
-  return names[0];
+  if (!names.length) throw new Error('This key can not use any Gemini "flash" model. Type a model name in Settings.');
+  return names;
 }
 export async function askGemini(key: string, prompt: string, model = '', showModel = true): Promise<string> {
-  const m = model.trim() || (await pickGeminiModel(key));
-  const r = await fetch(`${BASE}models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(key)}`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-  });
-  const j = await r.json();
-  if (!r.ok) throw new Error(j?.error?.message || 'Gemini request failed');
-  return (j?.candidates?.[0]?.content?.parts?.map((p: { text: string }) => p.text).join('') || 'No answer returned.') + (showModel ? `\n\n(model: ${m})` : '');
+  const candidates = model.trim() ? [model.trim()] : (await listGeminiModels(key)).slice(0, 4);
+  let last = 'Gemini request failed';
+  for (const m of candidates) {
+    const r = await gfetch(`${BASE}models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(key)}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+    if (r.ok) { const j = await r.json(); const t = j?.candidates?.[0]?.content?.parts?.map((p: { text: string }) => p.text).join('') || 'No answer returned.'; return t + (showModel ? `\n\n(model: ${m})` : ''); }
+    const e = await gerr(r); last = e.msg; if (e.fatal) break;
+  }
+  throw new Error(last);
 }

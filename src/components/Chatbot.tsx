@@ -7,7 +7,7 @@ import { askGemini, sharedGeminiKey } from '../lib/ai';
 interface Msg { who: 'bot' | 'me'; text: string; route?: string; label?: string }
 
 export default function Chatbot({ go }: { go: (r: string) => void }) {
-  const s = useStore(); const key = s.data.settings.geminiKey || sharedGeminiKey; const [keyIn, setKeyIn] = useState(''); const [showKey, setShowKey] = useState(false);
+  const s = useStore(); const key = s.data.settings.geminiKey || sharedGeminiKey; const [keyIn, setKeyIn] = useState(''); const [showKey, setShowKey] = useState(false); const [test, setTest] = useState('');
   const [open, setOpen] = useState(false); const [q, setQ] = useState(''); const [busy, setBusy] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([{ who: 'bot', text: `Hi ${s.user?.name || 'there'}! 👋 I'm your NoteNest guide. Ask me how to use anything on this site.` }]);
   const end = useRef<HTMLDivElement>(null);
@@ -23,8 +23,8 @@ export default function Chatbot({ go }: { go: (r: string) => void }) {
         const convo = hist.slice(-7, -1).map(m => (m.who === 'me' ? 'Student: ' : 'Guide: ') + m.text).join('\n');
         const ans = await askGemini(key, `${GUIDE_FOR_AI}\nConversation so far:\n${convo}\n\nStudent question: ${text}\n\nGuide answer:`, s.data.settings.geminiModel || '', false);
         setMsgs(m => [...m, { who: 'bot', text: ans, route: local.route, label: local.label }]);
-      } catch {
-        setMsgs(m => [...m, { who: 'bot', text: local.text + '\n\n(Gemini could not be reached, so this is my built-in answer.)', route: local.route, label: local.label }]);
+      } catch (e) {
+        setMsgs(m => [...m, { who: 'bot', text: local.text + '\n\n⚠️ Gemini problem: ' + (e as Error).message, route: local.route, label: local.label }]);
       }
       setBusy(false);
     } else setMsgs(m => [...m, { who: 'bot', ...local }]);
@@ -39,7 +39,9 @@ export default function Chatbot({ go }: { go: (r: string) => void }) {
         <div className="small" style={{ marginBottom: 6 }}>{s.data.settings.geminiKey ? 'Your Gemini key is saved (encrypted in this browser).' : sharedGeminiKey ? 'The site provides a Gemini key. You can use your own instead.' : 'Paste a free key from aistudio.google.com for smarter answers.'}</div>
         <div className="row"><input type="password" value={keyIn} onChange={e => setKeyIn(e.target.value)} placeholder="Gemini API key" aria-label="Gemini API key" style={{ flex: 1, width: 'auto' }} />
           <button className="btn sm pri" disabled={!keyIn.trim()} onClick={() => { s.update(d => { d.settings.geminiKey = keyIn.trim(); }); setKeyIn(''); setShowKey(false); }}>Save</button>
-          {s.data.settings.geminiKey && <button className="btn sm bad" onClick={() => s.update(d => { d.settings.geminiKey = ''; })}>Remove</button>}</div></div>}
+          {s.data.settings.geminiKey && <button className="btn sm bad" onClick={() => s.update(d => { d.settings.geminiKey = ''; })}>Remove</button>}
+          {key && <button className="btn sm" onClick={async () => { setTest('Testing…'); try { await askGemini(key, 'Reply with the single word: OK', s.data.settings.geminiModel || '', false); setTest('✅ Your key works!'); } catch (e) { setTest('❌ ' + (e as Error).message); } }}>Test key</button>}</div>
+        {test && <div className="small" style={{ marginTop: 6 }} role="status">{test}</div>}</div>}
       <div className="chat-body">
         {msgs.map((m, i) => <div key={i} className={'chat-msg ' + m.who}>
           <div>{m.text}</div>
